@@ -9,74 +9,181 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import mod.hey.studios.editor.manage.block.code.ExtraBlockCode;
+import mod.hey.studios.editor.manage.block.ExtraBlockInfo;
+import mod.hey.studios.editor.manage.block.v2.BlockLoader;
 import mod.hey.studios.moreblock.ReturnMoreblockManager;
 
 public class Fx {
 
-    public String[] a = {"repeat", "+", "-", "*", "/", "%", ">", "=", "<", "&&", "||", "not"};
-    public String[] b = {"+", "-", "*", "/", "%", ">", "=", "<", "&&", "||"};
-    public String c;
-    public String d;
-    public jq e;
-    public ArrayList<BlockBean> f;
-    public Map<String, BlockBean> g;
-    public ExtraBlockCode mceb;
+    private static final Pattern PARAM_PATTERN = Pattern.compile("%m(?!\\.[\\w]+)");
+    public final boolean isViewBindingEnabled;
+    public String[] operators = {"repeat", "+", "-", "*", "/", "%", ">", "=", "<", "&&", "||", "not"};
+    public String[] arithmetic = {"+", "-", "*", "/", "%", ">", "=", "<", "&&", "||"};
+    public String moreBlock = "";
+    public String activityName;
+    public jq buildConfig;
+    public ArrayList<BlockBean> eventBlocks;
+    public Map<String, BlockBean> blockMap;
 
-    public Fx(String var1, jq var2, String var3, ArrayList<BlockBean> var4) {
-        c = var1;
-        e = var2;
-        d = var3;
-        f = var4;
-        mceb = new ExtraBlockCode(this);
+    public Fx(String activityName, jq buildConfig, ArrayList<BlockBean> eventBlocks, boolean isViewBindingEnabled) {
+        this.activityName = activityName;
+        this.buildConfig = buildConfig;
+        this.eventBlocks = eventBlocks;
+        this.isViewBindingEnabled = isViewBindingEnabled;
     }
 
     public String a() {
-        g = new HashMap<>();
-        ArrayList<BlockBean> beans = f;
+        blockMap = new HashMap<>();
+        ArrayList<BlockBean> beans = eventBlocks;
 
         if (beans != null && !beans.isEmpty()) {
-            for (BlockBean bean : f) {
-                g.put(bean.id, bean);
+            for (BlockBean bean : eventBlocks) {
+                blockMap.put(bean.id, bean);
             }
 
-            return a(f.get(0), "");
+            return generateBlock(eventBlocks.get(0), "");
         } else {
             return "";
         }
     }
 
-    public final String a(BlockBean bean, String var2) {
-        ArrayList<String> params = new ArrayList<>();
+    public final String generateBlock(BlockBean bean, String var2) {
+        ArrayList<String> params = getBlockParams(bean);
 
-        for (int i = 0; i < bean.parameters.size(); i++) {
-            String param = bean.parameters.get(i);
-            Gx paramInfo = bean.getParamClassInfo().get(i);
-            int type;
+        String opcode = getBlockCode(bean, params);
 
-            if (paramInfo.b("boolean")) {
-                type = 0;
-            } else if (paramInfo.b("double")) {
-                type = 1;
-            } else if (paramInfo.b("String")) {
-                type = 2;
-            } else {
-                type = 3;
-            }
-            String parameter = a(param, type, bean.opCode);
+        String code = opcode;
 
-            if (parameter.isEmpty()) {
-                return "";
-            }
-
-            params.add(parameter);
+        if (b(bean.opCode, var2)) {
+            code = "(" + opcode + ")";
         }
 
-        String moreBlock = "";
+        if (bean.nextBlock >= 0) {
+            code += (code.isEmpty() ? "" : "\r\n") + a(String.valueOf(bean.nextBlock), moreBlock);
+        }
 
-        String opcode = mceb.getCodeExtraBlock(bean, "\"\"");
+        return code;
+    }
+
+    private boolean hasEmptySelectorParam(ArrayList<String> params, String spec) {
+        var matcher = PARAM_PATTERN.matcher(spec);
+        if (!matcher.find()) {
+            var paramMatcher = Pattern.compile("%[bdsm]").matcher(spec);
+            int count = 0;
+            ArrayList<Integer> selectorParamPositions = new ArrayList<>();
+            while (paramMatcher.find()) {
+                String param = paramMatcher.group();
+                if ("%m".equals(param)) {
+                    selectorParamPositions.add(count);
+                }
+                count++;
+            }
+            if (!selectorParamPositions.isEmpty()) {
+                for (int position : selectorParamPositions) {
+                    if (position >= params.size()) {
+                        continue;
+                    }
+                    var param = params.get(position);
+                    if (param == null || param.isEmpty()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private String escapeString(String input) {
+        StringBuilder escapedString = new StringBuilder(4096);
+        CharBuffer charBuffer = CharBuffer.wrap(input);
+
+        for (int i = 0; i < charBuffer.length(); ++i) {
+            char currentChar = charBuffer.get(i);
+            if (currentChar == '"') {
+                escapedString.append("\\\"");
+            } else if (currentChar == '\\') {
+                if (i < charBuffer.length() - 1) {
+                    int nextIndex = i + 1;
+                    currentChar = charBuffer.get(nextIndex);
+                    if (currentChar != 'n' && currentChar != 't') {
+                        escapedString.append("\\\\");
+                    } else {
+                        escapedString.append("\\").append(currentChar);
+                        i = nextIndex;
+                    }
+                } else {
+                    escapedString.append("\\\\");
+                }
+            } else if (currentChar == '\n') {
+                escapedString.append("\\n");
+            } else {
+                escapedString.append(currentChar);
+            }
+        }
+
+        return escapedString.toString();
+    }
+
+    public final String a(String param, int type, String opcode) {
+        if (!param.isEmpty() && param.charAt(0) == '@') {
+            opcode = a(param.substring(1), opcode);
+            if (type == 2 && opcode.isEmpty()) {
+                return "\"\"";
+            }
+            return opcode;
+        } else if (type == 2) {
+            return "\"" + escapeString(param) + "\"";
+        } else if (type == 1) {
+            /**
+             * Ideally, a.a.aFx#a(BlockBean, String) should be responsible for parsing the input properly.
+             * However, upon decompiling this class, it seems to completely ignore this case.
+             * This is the solution for now to prevent errors during code generation.
+             */
+            try {
+                if (param.isEmpty()) {
+                    return "0";
+                }
+                if (param.contains(".")) {
+                    Double.parseDouble(param);
+                    return param + "d";
+                }
+                Integer.parseInt(param);
+                return param;
+            } catch (NumberFormatException e) {
+                return param;
+            }
+        } else if (type == 0) {
+            //the same with type == 1
+            if (param.isEmpty()) {
+                return "true";
+            }
+        }
+        return param;
+    }
+
+    public final String a(String blockId, String var2) {
+        return !blockMap.containsKey(blockId) ? "" : generateBlock(blockMap.get(blockId), var2);
+    }
+
+    public final boolean b(String var1, String var2) {
+        return Arrays.asList(operators).contains(var2) && Arrays.asList(arithmetic).contains(var1);
+    }
+
+    public ArrayList<String> getBlockParams(BlockBean bean) {
+        ArrayList<String> params = new ArrayList<>();
+        for (int i = 0; i < bean.parameters.size(); i++) {
+            String param = bean.parameters.get(i);
+            int type = getBlockType(bean, i);
+            params.add(a(param, type, bean.opCode));
+        }
+        return params;
+    }
+
+    private String getBlockCode(BlockBean bean, ArrayList<String> params) {
+        String opcode = "";
         switch (bean.opCode) {
             case "definedFunc":
                 int space = bean.spec.indexOf(" ");
@@ -406,13 +513,25 @@ public class Fx {
                 opcode = String.format("%s.setOnClickListener(new View.OnClickListener() {\n@Override\npublic void onClick(View _view) {\n%s\n}\n});", params.get(0), listener);
                 break;
             case "isDrawerOpen":
-                opcode = e.a(c).a ? "_drawer.isDrawerOpen(GravityCompat.START)" : "";
+                if (buildConfig.a(activityName).hasDrawer) {
+                    opcode = isViewBindingEnabled ? "binding.Drawer.isDrawerOpen(GravityCompat.START)" : "_drawer.isDrawerOpen(GravityCompat.START)";
+                } else {
+                    opcode = "";
+                }
                 break;
             case "openDrawer":
-                opcode = e.a(c).a ? "_drawer.openDrawer(GravityCompat.START);" : "";
+                if (buildConfig.a(activityName).hasDrawer) {
+                    opcode = isViewBindingEnabled ? "binding.Drawer.openDrawer(GravityCompat.START);" : "_drawer.openDrawer(GravityCompat.START);";
+                } else {
+                    opcode = "";
+                }
                 break;
             case "closeDrawer":
-                opcode = e.a(c).a ? "_drawer.closeDrawer(GravityCompat.START);" : "";
+                if (buildConfig.a(activityName).hasDrawer) {
+                    opcode = isViewBindingEnabled ? "binding.Drawer.closeDrawer(GravityCompat.START);" : "_drawer.closeDrawer(GravityCompat.START);";
+                } else {
+                    opcode = "";
+                }
                 break;
             case "setEnable":
                 opcode = String.format("%s.setEnabled(%s);", params.get(0), params.get(1));
@@ -441,7 +560,7 @@ public class Fx {
                 opcode = String.format("%s.setBackgroundColor(%s);", params.get(0), params.get(1));
                 break;
             case "setBgResource":
-                opcode = params.get(1).equals("NONE") ? "" : "R.drawable." + params.get(1).replaceAll("\\.9", "");
+                opcode = params.get(1).equals("NONE") ? "0" : "R.drawable." + params.get(1).replaceAll("\\.9", "");
                 opcode = String.format("%s.setBackgroundResource(%s);", params.get(0), opcode);
                 break;
             case "setTextColor":
@@ -479,7 +598,7 @@ public class Fx {
                 opcode = String.format("%s.putExtra(%s, %s);", params.get(0), params.get(1), params.get(2));
                 break;
             case "intentSetFlags":
-                opcode = String.format("%s.setFlags(%s);", params.get(0), "Intent.FLAG_ACTIVITY_" + params.get(0));
+                opcode = String.format("%s.setFlags(%s);", params.get(0), "Intent.FLAG_ACTIVITY_" + params.get(1));
                 break;
             case "intentGetString":
                 opcode = String.format("getIntent().getStringExtra(%s)", params.get(0));
@@ -585,7 +704,15 @@ public class Fx {
             case "spnSetCustomViewData":
             case "pagerSetCustomViewData":
             case "gridSetCustomViewData":
-                opcode = String.format("%s.setAdapter(new %s(%s));", params.get(0), Lx.a(params.get(0)), params.get(1));
+                var param = params.get(0);
+                if (param.isEmpty()) {
+                    break;
+                }
+                var paramAdapter = param;
+                if (isViewBindingEnabled && paramAdapter.startsWith("binding.")) {
+                    paramAdapter = paramAdapter.substring("binding.".length());
+                }
+                opcode = String.format("%s.setAdapter(new %s(%s));", param, Lx.a(paramAdapter), params.get(1));
                 break;
             case "listRefresh":
                 opcode = String.format("((BaseAdapter)%s.getAdapter()).notifyDataSetChanged();", params.get(0));
@@ -666,7 +793,7 @@ public class Fx {
                 opcode = String.format("%s.setMaxDate((long)(%s));", params.get(0), params.get(1));
                 break;
             case "adViewLoadAd":
-                opcode = String.format("%s.loadAd(new AdRequest.Builder()%s.build());", params.get(0), e.t.stream().map(device -> ".addTestDevice(\"" + device + "\")\n").collect(Collectors.joining()));
+                opcode = String.format("%s.loadAd(new AdRequest.Builder()%s.build());", params.get(0), buildConfig.t.stream().map(device -> ".addTestDevice(\"" + device + "\")\n").collect(Collectors.joining()));
                 break;
             case "mapViewSetMapType":
                 opcode = String.format("_%s_controller.setMapType(GoogleMap.%s);", params.get(0), params.get(1));
@@ -754,16 +881,16 @@ public class Fx {
                 break;
             case "firebaseauthCreateUser":
                 if (!params.get(1).equals("\"\"") && !params.get(2).equals("\"\"")) {
-                    opcode = String.format("%s.createUserWithEmailAndPassword(%s, %s).addOnCompleteListener(%s.this, %s);", params.get(0), params.get(1), params.get(2), c, "_" + params.get(0) + "_create_user_listener");
+                    opcode = String.format("%s.createUserWithEmailAndPassword(%s, %s).addOnCompleteListener(%s.this, %s);", params.get(0), params.get(1), params.get(2), activityName, "_" + params.get(0) + "_create_user_listener");
                 }
                 break;
             case "firebaseauthSignInUser":
                 if (!params.get(1).equals("\"\"") && !params.get(2).equals("\"\"")) {
-                    opcode = String.format("%s.signInWithEmailAndPassword(%s, %s).addOnCompleteListener(%s.this, %s);", params.get(0), params.get(1), params.get(2), c, "_" + params.get(0) + "_sign_in_listener");
+                    opcode = String.format("%s.signInWithEmailAndPassword(%s, %s).addOnCompleteListener(%s.this, %s);", params.get(0), params.get(1), params.get(2), activityName, "_" + params.get(0) + "_sign_in_listener");
                 }
                 break;
             case "firebaseauthSignInAnonymously":
-                opcode = String.format("%s.signInAnonymously().addOnCompleteListener(%s.this, %s);", params.get(0), c, "_" + params.get(0) + "_sign_in_listener");
+                opcode = String.format("%s.signInAnonymously().addOnCompleteListener(%s.this, %s);", params.get(0), activityName, "_" + params.get(0) + "_sign_in_listener");
                 break;
             case "firebaseauthIsLoggedIn":
                 opcode = "(FirebaseAuth.getInstance().getCurrentUser() != null)";
@@ -837,10 +964,10 @@ public class Fx {
                 opcode = String.format("%s.getDuration()", params.get(0));
                 break;
             case "mediaplayerReset":
-                opcode = String.format("%s.reset()", params.get(0));
+                opcode = String.format("%s.reset();", params.get(0));
                 break;
             case "mediaplayerRelease":
-                opcode = String.format("%s.release()", params.get(0));
+                opcode = String.format("%s.release();", params.get(0));
 
                 break;
             case "mediaplayerIsPlaying":
@@ -848,7 +975,7 @@ public class Fx {
 
                 break;
             case "mediaplayerSetLooping":
-                opcode = String.format("%s.setLooping(%s)", params.get(0), params.get(1));
+                opcode = String.format("%s.setLooping(%s);", params.get(0), params.get(1));
                 break;
             case "mediaplayerIsLooping":
                 opcode = String.format("%s.isLooping()", params.get(0));
@@ -857,10 +984,10 @@ public class Fx {
                 opcode = String.format("%s = new SoundPool((int)(%s), AudioManager.STREAM_MUSIC, 0);", params.get(0), params.get(1));
                 break;
             case "soundpoolLoad":
-                opcode = String.format("%s.load(getApplicationContext(), R.raw.%s, 1)", params.get(0), params.get(1));
+                opcode = String.format("%s.load(getApplicationContext(), R.raw.%s, 1);", params.get(0), params.get(1));
                 break;
             case "soundpoolStreamPlay":
-                opcode = String.format("%s.play((int)(%s), 1.0f, 1.0f, 1, (int)(%s), 1.0f)", params.get(0), params.get(1), params.get(2));
+                opcode = String.format("%s.play((int)(%s), 1.0f, 1.0f, 1, (int)(%s), 1.0f);", params.get(0), params.get(1), params.get(2));
 
                 break;
             case "soundpoolStreamStop":
@@ -1204,8 +1331,8 @@ public class Fx {
 
             case "locationManagerRequestLocationUpdates":
                 String locationRequest = "%s.requestLocationUpdates(LocationManager.%s, %s, %s, _%s_location_listener);";
-                if (e.g) {
-                    opcode = String.format("if (ContextCompat.checkSelfPermission(%s.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {\n" + locationRequest + "\n}", c, params.get(0), params.get(1), params.get(2), params.get(3), params.get(0));
+                if (buildConfig.g) {
+                    opcode = String.format("if (ContextCompat.checkSelfPermission(%s.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {\n" + locationRequest + "\n}", activityName, params.get(0), params.get(1), params.get(2), params.get(3), params.get(0));
                 } else {
                     opcode = String.format("if (Build.VERSION.SDK_INT >= 23) {if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {\n" + locationRequest + "\n}\n}\nelse {\n" + locationRequest + "\n}", params.get(0), params.get(1), params.get(2), params.get(3), params.get(0), params.get(0), params.get(1), params.get(2), opcode, params.get(0));
                 }
@@ -1214,83 +1341,108 @@ public class Fx {
             case "locationManagerRemoveUpdates":
                 opcode = params.get(0) + ".removeUpdates(_" + params.get(0) + "_location_listener);";
                 break;
+            default:
+                opcode = getCodeExtraBlock(bean, "\"\"");
         }
-
-        String code = opcode;
-        if (b(bean.opCode, var2)) {
-            code = "(" + opcode + ")";
+        
+        /*
+          switch block above should be responsible for handling %m param.
+          However, upon decompiling this class, it completely ignore this case.
+          This is the solution for now to prevent errors during code generation.
+         */
+        if (hasEmptySelectorParam(params, bean.spec)) {
+            opcode = "";
         }
-
-        if (bean.nextBlock >= 0) {
-            code += "\r\n" + a(String.valueOf(bean.nextBlock), moreBlock);
-        }
-
-        return code;
+        return opcode;
     }
+    
+    private String getCodeExtraBlock(BlockBean blockBean, String var2) {
+        ArrayList<String> parameters = new ArrayList<>();
 
-    private String escapeString(String input) {
-        StringBuilder escapedString = new StringBuilder(4096);
-        CharBuffer charBuffer = CharBuffer.wrap(input);
+        for (int i = 0; i < blockBean.parameters.size(); i++) {
+            String parameterValue = blockBean.parameters.get(i);
 
-        for (int i = 0; i < charBuffer.length(); ++i) {
-            char currentChar = charBuffer.get(i);
-            if (currentChar == '"') {
-                escapedString.append("\\\"");
-            } else if (currentChar == '\\') {
-                if (i < charBuffer.length() - 1) {
-                    int nextIndex = i + 1;
-                    currentChar = charBuffer.get(nextIndex);
-                    if (currentChar != 'n' && currentChar != 't') {
-                        escapedString.append("\\\\");
+            switch (getBlockType(blockBean, i)) {
+                case 0:
+                    if (parameterValue.isEmpty()) {
+                        parameters.add("true");
                     } else {
-                        escapedString.append("\\").append(currentChar);
-                        i = nextIndex;
+                        parameters.add(a(parameterValue, getBlockType(blockBean, i), blockBean.opCode));
                     }
-                } else {
-                    escapedString.append("\\\\");
-                }
-            } else if (currentChar == '\n') {
-                escapedString.append("\\n");
-            } else {
-                escapedString.append(currentChar);
+                    break;
+
+                case 1:
+                    if (parameterValue.isEmpty()) {
+                        parameters.add("0");
+                    } else {
+                        parameters.add(a(parameterValue, getBlockType(blockBean, i), blockBean.opCode));
+                    }
+                    break;
+
+                case 2:
+                    if (parameterValue.isEmpty()) {
+                        parameters.add("\"\"");
+                    } else {
+                        parameters.add(a(parameterValue, getBlockType(blockBean, i), blockBean.opCode));
+                    }
+                    break;
+
+                default:
+                    if (parameterValue.isEmpty()) {
+                        parameters.add("");
+                    } else {
+                        parameters.add(a(parameterValue, getBlockType(blockBean, i), blockBean.opCode));
+                    }
             }
         }
 
-        return escapedString.toString();
-    }
+        if (blockBean.subStack1 >= 0) {
+            parameters.add(a(String.valueOf(blockBean.subStack1), var2));
+        } else {
+            parameters.add(" ");
+        }
 
-    public final String a(String param, int type, String opcode) {
-        if (!param.isEmpty() && param.charAt(0) == '@') {
-            opcode = a(param.substring(1), opcode);
-            if (type == 2 && opcode.isEmpty()) {
-                return "\"\"";
-            }
-            return opcode;
-        } else if (type == 2) {
-            return "\"" + escapeString(param) + "\"";
-        } else if (type == 1) {
+        if (blockBean.subStack2 >= 0) {
+            parameters.add(a(String.valueOf(blockBean.subStack2), var2));
+        } else {
+            parameters.add(" ");
+        }
+
+        ExtraBlockInfo blockInfo = BlockLoader.getBlockInfo(blockBean.opCode);
+
+        if (blockInfo.isMissing) {
+            blockInfo = BlockLoader.getBlockFromProject(buildConfig.sc_id, blockBean.opCode);
+        }
+
+        String formattedCode;
+        if (!parameters.isEmpty()) {
             try {
-                Integer.parseInt(param);
-                return param;
-            } catch (NumberFormatException e1) {
-                try {
-                    Double.parseDouble(param);
-                    return param + "d";
-                } catch (NumberFormatException e2) {
-                    return param;
-                }
+                formattedCode = String.format(blockInfo.getCode(), parameters.toArray(new Object[0]));
+            } catch (Exception e) {
+                formattedCode = "/* Failed to resolve Custom Block's code: " + e + " */";
             }
+        } else {
+            formattedCode = blockInfo.getCode();
         }
-        return param;
-    }
 
-    public final String a(String var1, String var2) {
-        return !g.containsKey(var1) ? "" : a(g.get(var1), var2);
+        return formattedCode;
     }
+    
+    private int getBlockType(BlockBean blockBean, int parameterIndex) {
+        int blockType;
 
-    public final boolean b(String var1, String var2) {
-        boolean var11 = Arrays.asList(a).contains(var2);
-        boolean var10 = Arrays.asList(b).contains(var1);
-        return var11 && var10;
+        Gx paramClassInfo = blockBean.getParamClassInfo().get(parameterIndex);
+
+        if (paramClassInfo.b("boolean")) {
+            blockType = 0;
+        } else if (paramClassInfo.b("double")) {
+            blockType = 1;
+        } else if (paramClassInfo.b("String")) {
+            blockType = 2;
+        } else {
+            blockType = 3;
+        }
+
+        return blockType;
     }
 }

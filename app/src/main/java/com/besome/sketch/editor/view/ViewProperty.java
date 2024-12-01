@@ -1,11 +1,8 @@
 package com.besome.sketch.editor.view;
 
 import android.animation.ObjectAnimator;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.text.InputType;
 import android.util.AttributeSet;
@@ -28,7 +25,6 @@ import com.besome.sketch.editor.property.ViewPropertyItems;
 import com.besome.sketch.lib.ui.CustomHorizontalScrollView;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.MaterialColors;
-import pro.sketchware.R;
 
 import java.util.ArrayList;
 
@@ -45,7 +41,9 @@ import a.a.a.bB;
 import a.a.a.jC;
 import a.a.a.mB;
 import a.a.a.wB;
+import mod.hey.studios.project.ProjectSettings;
 import mod.hey.studios.util.Helper;
+import pro.sketchware.R;
 
 public class ViewProperty extends LinearLayout implements Kw {
 
@@ -224,24 +222,40 @@ public class ViewProperty extends LinearLayout implements Kw {
         layoutPropertySeeAll = findViewById(R.id.layout_property_see_all);
         viewEvent = findViewById(R.id.view_event);
         hcvProperty.setHorizontalScrollBarEnabled(false);
-        hcvProperty.setOnScrollChangedListener((l, t, oldl, oldt) -> {
-            if (Math.abs(l - oldt) <= 5) {
+        hcvProperty.setOnScrollChangedListener((scrollX, scrollY, oldScrollX, oldScrollY) -> {
+            if (Math.abs(scrollX - oldScrollY) <= 5) {
                 return;
             }
-            if (l > oldt) {
+            int maxScrollX = hcvProperty.getChildAt(0).getWidth() - hcvProperty.getWidth();
+            if (scrollX > 100 && scrollX < maxScrollX) {
+                if (scrollX > oldScrollX) {
+                    if (showAllVisible) {
+                        showAllVisible = false;
+                        cancelSeeAllAnimations();
+                        showAllHider.start();
+                    }
+                } else {
+                    if (!showAllVisible) {
+                        showAllVisible = true;
+                        cancelSeeAllAnimations();
+                        showAllShower.start();
+                    }
+                }
+            } else if (scrollX >= maxScrollX) {
                 if (showAllVisible) {
                     showAllVisible = false;
                     cancelSeeAllAnimations();
                     showAllHider.start();
                 }
-            } else if (!(showAllVisible)) {
-                showAllVisible = true;
-                cancelSeeAllAnimations();
-                showAllShower.start();
+            } else {
+                if (!showAllVisible) {
+                    showAllVisible = true;
+                    cancelSeeAllAnimations();
+                    showAllShower.start();
+                }
             }
         });
         imgSave = findViewById(R.id.img_save);
-        imgSave.setColorFilter(getResources().getColor(R.color.color_accent), PorterDuff.Mode.SRC_ATOP);
         imgSave.setOnClickListener(v -> {
             if (!mB.a()) {
                 showSaveToCollectionDialog();
@@ -285,6 +299,7 @@ public class ViewProperty extends LinearLayout implements Kw {
     public void a(String sc_id, ProjectFileBean projectFileBean) {
         this.sc_id = sc_id;
         projectFile = projectFileBean;
+        viewPropertyItems.setProjectSettings(new ProjectSettings(sc_id));
     }
 
     public void a(String str) {

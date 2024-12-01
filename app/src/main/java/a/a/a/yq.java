@@ -8,14 +8,13 @@ import android.content.Context;
 import android.util.Log;
 import android.util.Pair;
 
-import pro.sketchware.SketchApplication;
 import com.besome.sketch.beans.BlockBean;
 import com.besome.sketch.beans.ComponentBean;
 import com.besome.sketch.beans.ProjectFileBean;
 import com.besome.sketch.beans.ProjectLibraryBean;
 import com.besome.sketch.beans.SrcCodeBean;
 import com.besome.sketch.beans.ViewBean;
-import com.sketchware.remod.xml.XmlBuilder;
+import pro.sketchware.xml.XmlBuilder;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -25,11 +24,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import pro.sketchware.utility.FileUtil;
 import mod.hey.studios.build.BuildSettings;
 import mod.hey.studios.project.ProjectSettings;
 import mod.hey.studios.util.ProjectFile;
 import mod.hilal.saif.blocks.CommandBlock;
+import pro.sketchware.SketchApplication;
+import pro.sketchware.utility.FileUtil;
 
 public class yq {
 
@@ -333,7 +333,30 @@ public class yq {
      */
     public void a(String iconPath) {
         try {
-            fileUtil.a(iconPath, resDirectoryPath + File.separator + "drawable-xhdpi" + File.separator + "app_icon.png");
+            fileUtil.a(iconPath, resDirectoryPath + File.separator + "mipmap-xhdpi" + File.separator + "ic_launcher.png");
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+    /**
+     * Copies a mipMaps folder to the project's app icon path, {@link yq#resDirectoryPath}/mipmap
+     */
+
+    public void aa(String iconPath) {
+        try {
+            FileUtil.copyDirectory(new File(iconPath),new File(resDirectoryPath + File.separator));
+        } catch (Exception e2) {
+            e2.printStackTrace();
+        }
+    }
+
+    /**
+     * creates ic_launcher.xml to the project's app icon path, {@link yq#resDirectoryPath}/mipmap-anydpi-v26
+     */
+
+    public void cf(String content) {
+        try {
+            fileUtil.b(resDirectoryPath + File.separator + "mipmap-anydpi-v26" + File.separator + "ic_launcher.xml", content);
         } catch (Exception e2) {
             e2.printStackTrace();
         }
@@ -480,7 +503,7 @@ public class yq {
         }
         for (ProjectFileBean activity : projectFileManager.b()) {
             if (activity.hasActivityOption(ProjectFileBean.OPTION_ACTIVITY_DRAWER)) {
-                N.a(activity.getActivityName()).a = true;
+                N.a(activity.getActivityName()).hasDrawer = true;
             }
             for (ComponentBean component : projectDataManager.e(activity.getJavaName())) {
                 switch (component.type) {
@@ -508,7 +531,7 @@ public class yq {
                             N.addPermission(activity.getActivityName(), jq.PERMISSION_VIBRATE);
                     case ComponentBean.COMPONENT_TYPE_FIREBASE_AUTH -> {
                         N.isFirebaseAuthUsed = true;
-                        N.a(activity.getActivityName()).b = true;
+                        N.a(activity.getActivityName()).usesFirebaseAuth = true;
                     }
                     case ComponentBean.COMPONENT_TYPE_REQUEST_NETWORK -> {
                         N.isGsonUsed = true;

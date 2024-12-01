@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.Pair;
@@ -19,7 +20,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 
 import com.google.android.material.appbar.MaterialToolbar;
-import pro.sketchware.R;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -55,11 +55,13 @@ import io.github.rosemoe.sora.widget.schemes.SchemeEclipse;
 import io.github.rosemoe.sora.widget.schemes.SchemeGitHub;
 import io.github.rosemoe.sora.widget.schemes.SchemeNotepadXX;
 import io.github.rosemoe.sora.widget.schemes.SchemeVS2019;
-import pro.sketchware.utility.SketchwareUtil;
-import pro.sketchware.utility.FileUtil;
 import mod.hey.studios.util.Helper;
 import mod.jbk.code.CodeEditorColorSchemes;
 import mod.jbk.code.CodeEditorLanguages;
+import pro.sketchware.R;
+import pro.sketchware.utility.FileUtil;
+import pro.sketchware.utility.SketchwareUtil;
+import pro.sketchware.utility.ThemeUtils;
 
 public class SrcCodeEditor extends AppCompatActivity {
     public static final List<Pair<String, Class<? extends EditorColorScheme>>> KNOWN_COLOR_SCHEMES = List.of(
@@ -93,7 +95,6 @@ public class SrcCodeEditor extends AppCompatActivity {
         boolean auto_complete_symbol_pairs = pref.getBoolean(prefix + "_acsp", true);
 
         selectTheme(ed, theme);
-
         ed.setTextSize(text_size);
         ed.setWordwrap(word_wrap);
         ed.getProps().symbolPairAutoCompletion = auto_complete_symbol_pairs;
@@ -220,7 +221,11 @@ public class SrcCodeEditor extends AppCompatActivity {
             languageId = 1;
         } else if (title.endsWith(".xml")) {
             editor.setEditorLanguage(CodeEditorLanguages.loadTextMateLanguage(CodeEditorLanguages.SCOPE_NAME_XML));
-            editor.setColorScheme(CodeEditorColorSchemes.loadTextMateColorScheme(CodeEditorColorSchemes.THEME_GITHUB));
+            if(ThemeUtils.isDarkThemeEnabled(getApplicationContext())) {
+                editor.setColorScheme(CodeEditorColorSchemes.loadTextMateColorScheme(CodeEditorColorSchemes.THEME_DRACULA));
+            } else {
+                editor.setColorScheme(CodeEditorColorSchemes.loadTextMateColorScheme(CodeEditorColorSchemes.THEME_GITHUB));
+            }
             languageId = 2;
         }
 
@@ -413,5 +418,9 @@ public class SrcCodeEditor extends AppCompatActivity {
                 .setSingleChoiceItems(languagesList, languageId, listener)
                 .setNegativeButton(R.string.common_word_cancel, null)
                 .show();
+    }
+    public static boolean isDarkModeEnabled(Context context) {
+        int nightModeFlags = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        return nightModeFlags == Configuration.UI_MODE_NIGHT_YES;
     }
 }

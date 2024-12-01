@@ -230,6 +230,8 @@ public class BlocksManager extends BaseAppCompatActivity {
 
     private double getN(final double _p) {
         int n = 0;
+        if (all_blocks_list == null) return 0;
+
         for (int i = 0; i < all_blocks_list.size(); i++) {
             if (all_blocks_list.get(i).get("palette").toString().equals(String.valueOf((long) (_p)))) {
                 n++;
@@ -385,7 +387,7 @@ public class BlocksManager extends BaseAppCompatActivity {
 
         binding.openColorPalette.setOnClickListener(v1 -> {
             final Zx zx = new Zx(this, 0, true, false);
-            zx.a(new PCP(this, binding.colorEditText, dialog));
+            zx.a(new PCP(binding.colorEditText));
             zx.showAtLocation(binding.openColorPalette, Gravity.CENTER, 0, 0);
         });
 

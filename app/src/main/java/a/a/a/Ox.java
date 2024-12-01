@@ -14,7 +14,7 @@ import com.besome.sketch.beans.LayoutBean;
 import com.besome.sketch.beans.ProjectFileBean;
 import com.besome.sketch.beans.TextBean;
 import com.besome.sketch.beans.ViewBean;
-import com.sketchware.remod.xml.XmlBuilder;
+import pro.sketchware.xml.XmlBuilder;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -25,7 +25,6 @@ import java.io.StringReader;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -135,6 +134,7 @@ public class Ox {
                     aci.inject(linearLayoutTag, "NavigationDrawer");
                     XmlBuilder includeTag = new XmlBuilder("include", true);
                     includeTag.addAttribute("", "layout", "@layout/_drawer_" + projectFile.fileName);
+                    includeTag.addAttribute("android", "id", "@+id/drawer");
                     linearLayoutTag.a(includeTag);
                     drawerLayoutTag.a(linearLayoutTag);
                     rootLayout = drawerLayoutTag;

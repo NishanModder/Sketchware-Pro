@@ -26,6 +26,7 @@ import com.github.angads25.filepicker.model.DialogProperties;
 import com.github.angads25.filepicker.view.FilePickerDialog;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
 import pro.sketchware.R;
 import pro.sketchware.databinding.DialogSelectApkToSignBinding;
 

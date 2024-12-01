@@ -12,12 +12,13 @@
         android:layout_gravity="center_horizontal"
         app:lottie_autoPlay="true"
         app:lottie_fileName="anim/loading_3balls.json"
-        app:lottie_loop="true" />
+        app:lottie_loop="true"
+        app:lottie_colorFilter="?colorPrimary"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:visibility="gone"

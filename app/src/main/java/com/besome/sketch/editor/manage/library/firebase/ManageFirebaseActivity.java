@@ -172,7 +172,7 @@ public class ManageFirebaseActivity extends BaseAppCompatActivity implements Vie
         getSupportActionBar().setTitle(Helper.getResString(R.string.design_library_firebase_title_firebase_manager));
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowTitleEnabled(true);
-        toolbar.setNavigationOnClickListener(Helper.getBackPressedClickListener(this));
+        toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
         s = new DB(getApplicationContext(), "P1");
         firebaseLibraryBean = getIntent().getParcelableExtra("firebase");
@@ -281,7 +281,7 @@ public class ManageFirebaseActivity extends BaseAppCompatActivity implements Vie
         properties.offset = Environment.getExternalStorageDirectory();
         properties.extensions = new String[]{"json"};
 
-        FilePickerDialog pickerDialog = new FilePickerDialog(this, properties);
+        FilePickerDialog pickerDialog = new FilePickerDialog(this, properties, R.style.RoundedCornersDialog);
 
         pickerDialog.setTitle("Select your google-services.json");
         pickerDialog.setDialogSelectionListener(selections -> {

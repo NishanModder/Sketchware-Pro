@@ -3,6 +3,7 @@ package com.besome.sketch.editor.property;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -42,9 +43,9 @@ public class PropertyMeasureItem extends RelativeLayout implements View.OnClickL
 
     private void setIcon(ImageView imageView) {
         if (key.equals("property_layout_width")) {
-            imgLeftIconDrawableResId = R.drawable.width_96;
+            imgLeftIconDrawableResId = R.drawable.ic_mtrl_width;
         } else if (key.equals("property_layout_height")) {
-            imgLeftIconDrawableResId = R.drawable.height_96;
+            imgLeftIconDrawableResId = R.drawable.ic_mtrl_height;
         }
         imageView.setImageResource(imgLeftIconDrawableResId);
     }
@@ -128,6 +129,8 @@ public class PropertyMeasureItem extends RelativeLayout implements View.OnClickL
         dialog.a(imgLeftIconDrawableResId);
 
         PropertyPopupMeasurementBinding binding = PropertyPopupMeasurementBinding.inflate(LayoutInflater.from(getContext()));
+        binding.tiInput.setHint(String.format(Helper.getResString(R.string.property_enter_value), tvName.getText().toString()));
+
         TB tb = new TB(getContext(), binding.tiInput, 0, 999);
 
         binding.rgWidthHeight.setOnCheckedChangeListener((group, checkedId) -> {
@@ -154,6 +157,13 @@ public class PropertyMeasureItem extends RelativeLayout implements View.OnClickL
         } else {
             binding.rgWidthHeight.check(R.id.rb_matchparent);
         }
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            binding.tvInputDp.setVisibility(View.GONE);
+
+            binding.tiInput.setSuffixText("dp");
+        }
+
         dialog.a(binding.getRoot());
         dialog.b(Helper.getResString(R.string.common_word_select), v -> {
             int checkedRadioButtonId = binding.rgWidthHeight.getCheckedRadioButtonId();
