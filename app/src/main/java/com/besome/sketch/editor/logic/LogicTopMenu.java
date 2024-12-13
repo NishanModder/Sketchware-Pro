@@ -3,226 +3,122 @@ package com.besome.sketch.editor.logic;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
+import com.google.android.material.card.MaterialCardView;
+
+import mod.hey.studios.util.Helper;
 import pro.sketchware.R;
 import pro.sketchware.databinding.LogicEditorTopMenuBinding;
-
-import a.a.a.xB;
+import pro.sketchware.utility.ThemeUtils;
 
 public class LogicTopMenu extends LinearLayout {
 
-    private boolean i;
-    private boolean j;
-    private boolean k;
-    private boolean l;
+    public boolean isDeleteActive;
+    public boolean isCopyActive;
+    public boolean isFavoriteActive;
+    public boolean isDetailActive;
+
+    private int colorSurfaceContainerHigh;
+    private int colorDefault;
+    private int colorOnDrag;
 
     private LogicEditorTopMenuBinding binding;
+    private final Context context;
 
     public LogicTopMenu(Context context) {
         super(context);
-        initialize(context);
+        this.context = context;
+        initialize();
     }
 
-    public LogicTopMenu(Context context, AttributeSet attributeSet) {
-        super(context, attributeSet);
-        initialize(context);
+    public LogicTopMenu(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        this.context = context;
+        initialize();
     }
 
-    private void initialize(Context context) {
+    private void initialize() {
         binding = LogicEditorTopMenuBinding.inflate(LayoutInflater.from(context), this, true);
-        binding.tvDelete.setText(xB.b().a(getContext(), R.string.common_word_delete));
-        binding.tvCopy.setText(xB.b().a(getContext(), R.string.common_word_copy));
-        binding.tvFavorite.setText(xB.b().a(getContext(), R.string.common_word_collection));
-        binding.tvDetail.setText(xB.b().a(getContext(), R.string.common_word_detail));
+        binding.tvDelete.setText(Helper.getResString(R.string.common_word_delete));
+        binding.tvCopy.setText(Helper.getResString(R.string.common_word_duplicate));
+        binding.tvFavorite.setText(Helper.getResString(R.string.common_word_collection));
+        binding.tvDetail.setText(Helper.getResString(R.string.common_word_detail));
+
+        colorSurfaceContainerHigh = ThemeUtils.getColor(this, R.attr.colorSurfaceContainerHigh);
+        colorDefault = ContextCompat.getColor(context, R.color.view_property_tab_deactive_text);
+        colorOnDrag = ContextCompat.getColor(context, android.R.color.white);
     }
 
-    public void a(boolean var1) {
-        j = var1;
-        if (var1) {
-            binding.layoutCopy.setBackgroundColor(getResources().getColor(R.color.scolor_green_normal));
-            binding.tvCopy.setTextColor(0xffffffff);
-            binding.ivCopy.setImageResource(R.drawable.copy_48_white);
+    public void setCopyActive(boolean active) {
+        isCopyActive = active;
+        updateLayoutAppearance(binding.layoutCopy, active, R.color.scolor_green_normal, binding.tvCopy, binding.ivCopy);
+    }
+
+    public void setDeleteActive(boolean active) {
+        isDeleteActive = active;
+        updateLayoutAppearance(binding.layoutDelete, active, R.color.scolor_red_02, binding.tvDelete, binding.ivTrash);
+    }
+
+    public void setDetailActive(boolean active) {
+        isDetailActive = active;
+        updateLayoutAppearance(binding.layoutDetail, active, R.color.scolor_green_violet, binding.tvDetail, binding.ivDetail);
+    }
+
+    public void setFavoriteActive(boolean active) {
+        isFavoriteActive = active;
+        updateLayoutAppearance(binding.layoutFavorite, active, R.color.scolor_blue_01, binding.tvFavorite, binding.ivBookmark);
+    }
+
+    public boolean isInsideCopyArea(float x, float y) {
+        return isInsideArea(binding.layoutCopy, x, y);
+    }
+
+    public boolean isInsideDeleteArea(float x, float y) {
+        return isInsideArea(binding.layoutDelete, x, y);
+    }
+
+    public boolean isInsideDetailArea(float x, float y) {
+        return isInsideArea(binding.layoutDetail, x, y);
+    }
+
+    public boolean isInsideFavoriteArea(float x, float y) {
+        return isInsideArea(binding.layoutFavorite, x, y);
+    }
+
+    public void toggleLayoutVisibility(boolean isBlockCollection) {
+        binding.layoutFavorite.setVisibility(isBlockCollection ? VISIBLE : GONE);
+        binding.layoutCopy.setVisibility(isBlockCollection ? VISIBLE : GONE);
+        binding.layoutDetail.setVisibility(isBlockCollection ? GONE : VISIBLE);
+    }
+
+    private void updateLayoutAppearance(
+            MaterialCardView layout, boolean active, int activeColorRes, TextView textView, ImageView icon) {
+        if (active) {
+            layout.setCardBackgroundColor(ContextCompat.getColor(context, activeColorRes));
+            textView.setTextColor(colorOnDrag);
+            icon.setColorFilter(colorOnDrag);
         } else {
-            binding.layoutCopy.setBackgroundColor(0xfffefefe);
-            binding.tvCopy.setTextColor(0xff7d7d7d);
-            binding.ivCopy.setImageResource(R.drawable.copy_48_gray);
+            layout.setCardBackgroundColor(colorSurfaceContainerHigh);
+            textView.setTextColor(colorDefault);
+            icon.setColorFilter(colorDefault);
         }
-
     }
 
-    public boolean a() {
-        return j;
-    }
-
-    public boolean a(float var1, float var2) {
-        int var3 = binding.layoutCopy.getVisibility();
-        boolean var4 = false;
-        if (var3 == GONE) {
+    private boolean isInsideArea(View layout, float x, float y) {
+        if (layout.getVisibility() == GONE) {
             return false;
-        } else {
-            int[] var5 = new int[2];
-            binding.layoutCopy.getLocationOnScreen(var5);
-            boolean var6 = var4;
-            if (var1 > (float) var5[0]) {
-                var6 = var4;
-                if (var1 < (float) (var5[0] + binding.layoutCopy.getWidth())) {
-                    var6 = var4;
-                    if (var2 > (float) var5[1]) {
-                        var6 = var4;
-                        if (var2 < (float) (var5[1] + binding.layoutCopy.getHeight())) {
-                            var6 = true;
-                        }
-                    }
-                }
-            }
-
-            return var6;
-        }
-    }
-
-    public void b(boolean var1) {
-        i = var1;
-        if (var1) {
-            binding.layoutDelete.setBackgroundColor(getResources().getColor(R.color.scolor_red_02));
-            binding.tvDelete.setTextColor(-1);
-            binding.ivTrash.setImageResource(R.drawable.ic_trashcan_white_48dp);
-        } else {
-            binding.layoutDelete.setBackgroundColor(0xfffefefe);
-            binding.tvDelete.setTextColor(0xff7d7d7d);
-            binding.ivTrash.setImageResource(R.drawable.icon_delete);
         }
 
-    }
+        int[] location = new int[2];
+        layout.getLocationOnScreen(location);
 
-    public boolean b() {
-        return i;
-    }
-
-    public boolean b(float var1, float var2) {
-        int var3 = binding.layoutDelete.getVisibility();
-        boolean var4 = false;
-        if (var3 == GONE) {
-            return false;
-        } else {
-            int[] var5 = new int[2];
-            binding.layoutDelete.getLocationOnScreen(var5);
-            boolean var6 = var4;
-            if (var1 > (float) var5[0]) {
-                var6 = var4;
-                if (var1 < (float) (var5[0] + binding.layoutDelete.getWidth())) {
-                    var6 = var4;
-                    if (var2 > (float) var5[1]) {
-                        var6 = var4;
-                        if (var2 < (float) (var5[1] + binding.layoutDelete.getHeight())) {
-                            var6 = true;
-                        }
-                    }
-                }
-            }
-
-            return var6;
-        }
-    }
-
-    public void c(boolean var1) {
-        l = var1;
-        if (var1) {
-            binding.layoutDetail.setBackgroundColor(getResources().getColor(R.color.scolor_blue_01));
-            binding.tvDetail.setTextColor(0xffffffff);
-            binding.ivDetail.setImageResource(R.drawable.block_96_white);
-        } else {
-            binding.layoutDetail.setBackgroundColor(0xfffefefe);
-            binding.tvDetail.setTextColor(0xff7d7d7d);
-            binding.ivDetail.setImageResource(R.drawable.block_flled_grey);
-        }
-
-    }
-
-    public boolean c() {
-        return l;
-    }
-
-    public boolean c(float var1, float var2) {
-        int var3 = binding.layoutDetail.getVisibility();
-        boolean var4 = false;
-        if (var3 == GONE) {
-            return false;
-        } else {
-            int[] var5 = new int[2];
-            binding.layoutDetail.getLocationOnScreen(var5);
-            boolean var6 = var4;
-            if (var1 > (float) var5[0]) {
-                var6 = var4;
-                if (var1 < (float) (var5[0] + binding.layoutDetail.getWidth())) {
-                    var6 = var4;
-                    if (var2 > (float) var5[1]) {
-                        var6 = var4;
-                        if (var2 < (float) (var5[1] + binding.layoutDetail.getHeight())) {
-                            var6 = true;
-                        }
-                    }
-                }
-            }
-
-            return var6;
-        }
-    }
-
-    public void d(boolean var1) {
-        k = var1;
-        if (var1) {
-            binding.layoutFavorite.setBackgroundColor(getResources().getColor(R.color.scolor_blue_01));
-            binding.tvFavorite.setTextColor(0xffffffff);
-            binding.ivBookmark.setImageResource(R.drawable.bookmark_48_white);
-        } else {
-            binding.layoutFavorite.setBackgroundColor(0xfffefefe);
-            binding.tvFavorite.setTextColor(0xff7d7d7d);
-            binding.ivBookmark.setImageResource(R.drawable.ic_bookmark_red_48dp);
-        }
-
-    }
-
-    public boolean d() {
-        return k;
-    }
-
-    public boolean d(float var1, float var2) {
-        int var3 = binding.layoutFavorite.getVisibility();
-        boolean var4 = false;
-        if (var3 == GONE) {
-            return false;
-        } else {
-            int[] var5 = new int[2];
-            binding.layoutFavorite.getLocationOnScreen(var5);
-            boolean var6 = var4;
-            if (var1 > (float) var5[0]) {
-                var6 = var4;
-                if (var1 < (float) (var5[0] + binding.layoutFavorite.getWidth())) {
-                    var6 = var4;
-                    if (var2 > (float) var5[1]) {
-                        var6 = var4;
-                        if (var2 < (float) (var5[1] + binding.layoutFavorite.getHeight())) {
-                            var6 = true;
-                        }
-                    }
-                }
-            }
-
-            return var6;
-        }
-    }
-
-    public void e(boolean var1) {
-        if (var1) {
-            binding.layoutFavorite.setVisibility(VISIBLE);
-            binding.layoutCopy.setVisibility(VISIBLE);
-            binding.layoutDetail.setVisibility(GONE);
-        } else {
-            binding.layoutFavorite.setVisibility(GONE);
-            binding.layoutCopy.setVisibility(GONE);
-            binding.layoutDetail.setVisibility(VISIBLE);
-        }
-
+        return x > location[0] && x < (location[0] + layout.getWidth())
+                && y > location[1] && y < (location[1] + layout.getHeight());
     }
 }

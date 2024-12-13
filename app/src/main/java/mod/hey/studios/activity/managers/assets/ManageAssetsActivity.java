@@ -41,6 +41,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Arrays; 
 
 import pro.sketchware.utility.SketchwareUtil;
 import pro.sketchware.utility.FilePathUtil;
@@ -177,7 +178,7 @@ public class ManageAssetsActivity extends BaseAppCompatActivity {
         properties.offset = Environment.getExternalStorageDirectory();
         properties.extensions = null;
 
-        FilePickerDialog dialog = new FilePickerDialog(this, properties);
+        FilePickerDialog dialog = new FilePickerDialog(this, properties, R.style.RoundedCornersDialog);
         dialog.setTitle("Select an asset file");
         dialog.setDialogSelectionListener(selections -> {
             for (String path : selections) {
@@ -256,6 +257,14 @@ public class ManageAssetsActivity extends BaseAppCompatActivity {
     }
 
     public class AssetsAdapter extends RecyclerView.Adapter<AssetsAdapter.AssetsViewHolder> {
+        
+        private static final String[] textExtensions = { 
+            ".txt", ".xml", ".java", ".json", ".csv", ".html", ".css", ".js", 
+            ".md", ".rtf", ".log", ".sql", ".yml", ".yaml", ".properties", ".ini",
+            ".kt", ".toml", ".kts", ".php", ".py", ".ts", ".md", ".sh", ".c", ".h",
+            ".hpp", ".cpp"
+        };
+        
         @NonNull
         @Override
         public AssetsViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -344,7 +353,7 @@ public class ManageAssetsActivity extends BaseAppCompatActivity {
         }
 
         public void goEditFile(int position) {
-            if (getItem(position).endsWith(".json") || getItem(position).endsWith(".txt")) {
+            if (Arrays.stream(textExtensions).anyMatch(getItem(position)::endsWith)) {
                 Intent launchIntent = new Intent();
 
                 launchIntent.setClass(getApplicationContext(), SrcCodeEditor.class);

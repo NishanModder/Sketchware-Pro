@@ -5,32 +5,34 @@ import static mod.bobur.StringEditorActivity.isXmlStringsContains;
 
 import android.util.Pair;
 
+import a.a.a.Ox;
+import a.a.a.jC;
+import a.a.a.jq;
+import a.a.a.kq;
+
 import com.besome.sketch.beans.ComponentBean;
 import com.besome.sketch.beans.ProjectFileBean;
 import com.besome.sketch.beans.ViewBean;
 import com.besome.sketch.editor.LogicEditorActivity;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Set;
-
-import a.a.a.Ox;
-import a.a.a.jC;
-import a.a.a.jq;
-import a.a.a.kq;
 import mod.agus.jcoderz.beans.ViewBeans;
-import mod.elfilibustero.sketch.lib.utils.CustomVariableUtil;
 import mod.hey.studios.editor.view.IdGenerator;
 import mod.hey.studios.moreblock.ReturnMoreblockManager;
 import mod.hilal.saif.activities.tools.ConfigActivity;
 import mod.hilal.saif.blocks.BlocksHandler;
 import mod.pranav.viewbinding.ViewBindingBuilder;
+
 import pro.sketchware.blocks.ExtraBlocks;
 import pro.sketchware.control.logic.LogicClickListener;
+import pro.sketchware.utility.CustomVariableUtil;
 import pro.sketchware.utility.FileResConfig;
 import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Set;
 
 public class ExtraPaletteBlock {
 
@@ -268,7 +270,7 @@ public class ExtraPaletteBlock {
 
                     if (!customView.convert.equals("include")) {
                         String typeName = customView.convert.isEmpty() ? ViewBean.getViewTypeName(customView.type) : IdGenerator.getLastPath(customView.convert);
-                        logicEditor.a(customView.id, "v", typeName, "getVar").setTag(isViewBindingEnabled ? "binding." + ViewBindingBuilder.generateId(customView.id) : customView.id);
+                        logicEditor.a(customView.id, "v", typeName, "getVar").setTag(isViewBindingEnabled ? "binding." + ViewBindingBuilder.generateParameterFromId(customView.id) : customView.id);
                     }
                 }
             }
@@ -291,7 +293,7 @@ public class ExtraPaletteBlock {
             if (!view.convert.equals("include")) {
                 if (!toNotAdd.contains("android:id")) {
                     String typeName = view.convert.isEmpty() ? ViewBean.getViewTypeName(view.type) : IdGenerator.getLastPath(view.convert);
-                    logicEditor.a(isViewBindingEnabled ? "binding." + ViewBindingBuilder.generateId(view.id) : view.id, "v", typeName, "getVar").setTag(isViewBindingEnabled ? "binding." + ViewBindingBuilder.generateId(view.id) : view.id);
+                    logicEditor.a(isViewBindingEnabled ? "binding." + ViewBindingBuilder.generateParameterFromId(view.id) : view.id, "v", typeName, "getVar").setTag(isViewBindingEnabled ? "binding." + ViewBindingBuilder.generateParameterFromId(view.id) : view.id);
                 }
             }
         }
@@ -311,7 +313,7 @@ public class ExtraPaletteBlock {
                     if (!drawerView.convert.equals("include")) {
                         String id = "_drawer_" + drawerView.id;
                         String typeName = drawerView.convert.isEmpty() ? ViewBean.getViewTypeName(drawerView.type) : IdGenerator.getLastPath(drawerView.convert);
-                        logicEditor.a(isViewBindingEnabled ? "binding.drawer." + ViewBindingBuilder.generateId(id) : id, "v", typeName, "getVar").setTag(id);
+                        logicEditor.a(isViewBindingEnabled ? "binding.drawer." + ViewBindingBuilder.generateParameterFromId(id) : id, "v", typeName, "getVar").setTag(id);
                     }
                 }
             }
@@ -1188,7 +1190,7 @@ public class ExtraPaletteBlock {
                 if (ConfigActivity.isSettingEnabled(ConfigActivity.SETTING_SHOW_BUILT_IN_BLOCKS)) {
                     logicEditor.a("Command Blocks", 0xff555555);
                     logicEditor.a("c", "CommandBlockJava");
-                    logicEditor.a("c", "CommandBlockXML");
+                    logicEditor.addDeprecatedBlock("Deprecated: Use XML Command Manager", "c", "CommandBlockXML");
                     logicEditor.a("Permission Command Blocks", 0xff555555);
                     logicEditor.a(" ", "addPermission");
                     logicEditor.a(" ", "removePermission");

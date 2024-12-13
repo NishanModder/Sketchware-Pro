@@ -1,8 +1,10 @@
 package pro.sketchware.menu;
 
 import static android.text.TextUtils.isEmpty;
+
 import static mod.bobur.StringEditorActivity.convertXmlToListMap;
 import static mod.bobur.StringEditorActivity.isXmlStringsContains;
+
 import static pro.sketchware.utility.SketchwareUtil.getDip;
 
 import android.annotation.SuppressLint;
@@ -15,6 +17,13 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.TextView;
 
+import a.a.a.Ss;
+import a.a.a.aB;
+import a.a.a.eC;
+import a.a.a.jC;
+import a.a.a.uq;
+import a.a.a.wB;
+
 import com.besome.sketch.beans.AdTestDeviceBean;
 import com.besome.sketch.beans.AdUnitBean;
 import com.besome.sketch.beans.ComponentBean;
@@ -25,33 +34,26 @@ import com.github.angads25.filepicker.model.DialogProperties;
 import com.github.angads25.filepicker.view.FilePickerDialog;
 import com.google.android.material.textfield.TextInputLayout;
 
+import mod.hey.studios.util.Helper;
+import mod.hilal.saif.activities.tools.ConfigActivity;
+import mod.hilal.saif.asd.AsdDialog;
+import mod.hilal.saif.asd.asdforall.AsdAllEditor;
+import mod.hilal.saif.asd.old.AsdOldDialog;
+
+import pro.sketchware.R;
+import pro.sketchware.lib.base.BaseTextWatcher;
+import pro.sketchware.lib.highlighter.SimpleHighlighter;
+import pro.sketchware.utility.CustomVariableUtil;
+import pro.sketchware.utility.FilePathUtil;
+import pro.sketchware.utility.FileResConfig;
+import pro.sketchware.utility.FileUtil;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import a.a.a.Ss;
-import a.a.a.aB;
-import a.a.a.eC;
-import a.a.a.jC;
-import a.a.a.uq;
-import a.a.a.wB;
-import dev.aldi.sayuti.block.ExtraMenuBlock;
-import mod.agus.jcoderz.editor.manage.block.makeblock.BlockMenu;
-import mod.elfilibustero.sketch.lib.utils.CustomVariableUtil;
-import mod.hey.studios.util.Helper;
-import mod.hilal.saif.activities.tools.ConfigActivity;
-import mod.hilal.saif.asd.AsdDialog;
-import mod.hilal.saif.asd.asdforall.AsdAllEditor;
-import mod.hilal.saif.asd.old.AsdOldDialog;
-import pro.sketchware.R;
-import pro.sketchware.lib.base.BaseTextWatcher;
-import pro.sketchware.lib.highlighter.SimpleHighlighter;
-import pro.sketchware.utility.FilePathUtil;
-import pro.sketchware.utility.FileResConfig;
-import pro.sketchware.utility.FileUtil;
 
 public class ExtraMenuBean {
 
@@ -72,7 +74,7 @@ public class ExtraMenuBean {
 
     private final String ASSETS_PATH = FileUtil.getExternalStorageDir() + "/.sketchware/data/%s/files/assets/";
     private final String NATIVE_PATH = FileUtil.getExternalStorageDir() + "/.sketchware/data/%s/files/native_libs/";
-    private final ExtraMenuBlock extraMenuBlock;
+    private final DefaultExtraMenuBean defaultExtraMenu;
     private final FilePathUtil fpu;
     private final FilePickerDialog fpd;
     private final FileResConfig frc;
@@ -89,7 +91,7 @@ public class ExtraMenuBean {
         sc_id = logicA.B;
         fpu = new FilePathUtil();
         frc = new FileResConfig(logicA.B);
-        extraMenuBlock = new ExtraMenuBlock(logicA);
+        defaultExtraMenu = new DefaultExtraMenuBean(logicA);
         projectDataManager = jC.a(logicA.B);
         javaName = logicA.M.getJavaName();
     }
@@ -715,34 +717,9 @@ public class ExtraMenuBean {
                 break;
 
             default:
-                Pair<String, String[]> menuPair = BlockMenu.getMenu(menu.getMenuName());
+                Pair<String, ArrayList<String>> menuPair = defaultExtraMenu.getMenu(menu);
                 title = menuPair.first;
-                menus = new ArrayList<>(Arrays.asList(menuPair.second));
-                extraMenuBlock.a(menu, dialog, menus);
-
-                for (String s : projectDataManager.e(javaName, 5)) {
-                    Matcher matcher2 = Pattern.compile("^(\\w+)[\\s]+(\\w+)").matcher(s);
-                    while (matcher2.find()) {
-                        if (menuName.equals(matcher2.group(1))) {
-                            title = "Select a " + matcher2.group(1) + " Variable";
-                            menus.add(matcher2.group(2));
-                        }
-                    }
-                }
-                for (String variable : projectDataManager.e(javaName, 6)) {
-                    String variableType = CustomVariableUtil.getVariableType(variable);
-                    String variableName = CustomVariableUtil.getVariableName(variable);
-                    if (menuName.equals(variableType)) {
-                        title = "Select a " + variableType + " Variable";
-                        menus.add(variableName);
-                    }
-                }
-                for (ComponentBean componentBean : projectDataManager.e(javaName)) {
-                    if (componentBean.type > 36 && menuName.equals(ComponentBean.getComponentTypeName(componentBean.type))) {
-                        title = "Select a " + ComponentBean.getComponentTypeName(componentBean.type);
-                        menus.add(componentBean.componentId);
-                    }
-                }
+                menus = new ArrayList<>(menuPair.second);
         }
 
         for (String menuArg : menus) {

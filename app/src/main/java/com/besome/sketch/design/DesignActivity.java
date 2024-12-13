@@ -71,6 +71,7 @@ import java.util.concurrent.Executors;
 
 import a.a.a.DB;
 import a.a.a.GB;
+import a.a.a.Ox;
 import a.a.a.ProjectBuilder;
 import a.a.a.ViewEditorFragment;
 import a.a.a.aB;
@@ -78,6 +79,7 @@ import a.a.a.bB;
 import a.a.a.bC;
 import a.a.a.br;
 import a.a.a.cC;
+import a.a.a.eC;
 import a.a.a.jC;
 import a.a.a.kC;
 import a.a.a.lC;
@@ -120,6 +122,8 @@ import mod.khaled.logcat.LogReaderActivity;
 import pro.sketchware.utility.ThemeUtils;
 import pro.sketchware.R;
 import pro.sketchware.activities.appcompat.ManageAppCompatActivity;
+import pro.sketchware.activities.editor.command.ManageXMLCommandActivity;
+import pro.sketchware.activities.editor.view.ViewCodeEditorActivity;
 import pro.sketchware.databinding.ProgressMsgBoxBinding;
 import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
@@ -172,12 +176,23 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     });
     private final ActivityResultLauncher<Intent> openCollectionManager = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() == RESULT_OK) {
-            viewTabAdapter.j();
+            if (viewTabAdapter != null) {
+                viewTabAdapter.j();
+            }
         }
     });
     private final ActivityResultLauncher<Intent> openResourcesManager = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
         if (result.getResultCode() == RESULT_OK) {
-            viewTabAdapter.i();
+            if (viewTabAdapter != null) {
+                viewTabAdapter.i();
+            }
+        }
+    });
+    private final ActivityResultLauncher<Intent> openViewCodeEditor = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+        if (result.getResultCode() == RESULT_OK) {
+            if (viewTabAdapter != null) {
+                viewTabAdapter.i();
+            }
         }
     });
     private rs eventTabAdapter;
@@ -349,6 +364,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                 PopupMenu popupMenu = new PopupMenu(this, buildSettings);
                 Menu menu = popupMenu.getMenu();
 
+                var isViewTab = viewPager.getCurrentItem() == 0;
                 menu.add(Menu.NONE, 1, Menu.NONE, "Build Settings");
                 menu.add(Menu.NONE, 2, Menu.NONE, "Clean temporary files");
                 menu.add(Menu.NONE, 3, Menu.NONE, "Show last compile error");
@@ -356,6 +372,9 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                 if (FileUtil.isExistFile(q.finalToInstallApkPath)) {
                     menu.add(Menu.NONE, 4, Menu.NONE, "Install last built APK");
                     menu.add(Menu.NONE, 6, Menu.NONE, "Show Apk signatures");
+                }
+                if (isViewTab) {
+                    menu.add(Menu.NONE, 7, Menu.NONE, "Direct XML editor");
                 }
 
                 popupMenu.setOnMenuItemClickListener(item -> {
@@ -378,6 +397,9 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                         case 6 -> {
                             ApkSignatures apkSignatures = new ApkSignatures(this, q.finalToInstallApkPath);
                             apkSignatures.showSignaturesDialog();
+                        }
+                        case 7 -> {
+                            toViewCodeEditor();
                         }
                         default -> {
                             return false;
@@ -770,6 +792,29 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     }
 
     /**
+     * Opens {@link ViewCodeEditor}.
+     */
+    void toViewCodeEditor() {
+        k();
+        new Thread(() -> {
+            String filename = projectFileSelector.getFileName();
+            // var yq = new yq(getApplicationContext(), sc_id);
+            var xmlGenerator = new Ox(q.N, jC.b(sc_id).b(filename));
+            var projectDataManager = jC.a(sc_id);
+            var viewBeans = projectDataManager.d(filename);
+            var viewFab = projectDataManager.h(filename);
+            xmlGenerator.setExcludeAppCompat(true);
+            xmlGenerator.a(eC.a(viewBeans), viewFab);
+            final String content = xmlGenerator.b();
+            runOnUiThread(() -> {
+                if (isFinishing()) return;
+                h();
+                launchActivity(ViewCodeEditorActivity.class, openViewCodeEditor, new Pair<>("title", projectFileSelector.getFileName()), new Pair<>("content", content));
+            });
+        }).start();
+    }
+
+    /**
      * Opens {@link LogReaderActivity}.
      */
     void toLogReader() {
@@ -813,7 +858,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
      * Shows a {@link CustomBlocksDialog}.
      */
     void toCustomBlocksViewer() {
-        CustomBlocksDialog.show(this, sc_id);
+        new CustomBlocksDialog().show(this, sc_id);
     }
 
     /**
@@ -908,6 +953,13 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
             }
         }
         launchActivity(SrcViewerActivity.class, null, new Pair<>("current", current));
+    }
+
+    /**
+     * Opens {@link ManageXMLCommandActivity}.
+     */
+    void toXMLCommandManager() {
+        launchActivity(ManageXMLCommandActivity.class, null);
     }
 
     @SafeVarargs

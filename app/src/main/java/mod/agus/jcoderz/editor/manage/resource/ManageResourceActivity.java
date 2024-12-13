@@ -265,7 +265,7 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
         properties.error_dir = Environment.getExternalStorageDirectory();
         properties.offset = Environment.getExternalStorageDirectory();
         properties.extensions = null;
-        dialog = new FilePickerDialog(this, properties);
+        dialog = new FilePickerDialog(this, properties, R.style.RoundedCornersDialog);
         dialog.setTitle("Select a resource file");
         dialog.setDialogSelectionListener(selections -> {
             for (String path : selections) {
@@ -356,6 +356,9 @@ public class ManageResourceActivity extends BaseAppCompatActivity {
             intent.putExtra("title", Uri.parse(frc.listFileResource.get(position)).getLastPathSegment());
             intent.putExtra("content", frc.listFileResource.get(position));
             intent.putExtra("xml", "");
+            if (getIntent().hasExtra("sc_id")) {
+                intent.putExtra("sc_id", getIntent().getStringExtra("sc_id"));
+            }
             startActivity(intent);
         } else {
             SketchwareUtil.toast("Only XML files can be edited");

@@ -14,7 +14,8 @@ import com.besome.sketch.beans.LayoutBean;
 import com.besome.sketch.beans.ProjectFileBean;
 import com.besome.sketch.beans.TextBean;
 import com.besome.sketch.beans.ViewBean;
-import pro.sketchware.xml.XmlBuilder;
+
+import dev.aldi.sayuti.editor.injection.AppCompatInjection;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -26,28 +27,34 @@ import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import dev.aldi.sayuti.editor.injection.AppCompatInjection;
 import mod.agus.jcoderz.beans.ViewBeans;
-import mod.elfilibustero.sketch.lib.utils.InjectAttributeHandler;
 import mod.jbk.util.LogUtil;
+
+import pro.sketchware.managers.inject.InjectRootLayoutManager;
+import pro.sketchware.utility.InjectAttributeHandler;
+import pro.sketchware.xml.XmlBuilder;
 
 @SuppressLint("RtlHardcoded")
 public class Ox {
 
     private final jq buildConfig;
+    private final InjectRootLayoutManager rootManager;
     private final AppCompatInjection aci;
     private final ProjectFileBean projectFile;
     private ViewBean fab;
     private ArrayList<ViewBean> views;
     private XmlBuilder rootLayout = null;
     private XmlBuilder collapsingToolbarLayout = null;
+    private boolean excludeAppCompat;
 
     public Ox(jq jq, ProjectFileBean projectFileBean) {
         buildConfig = jq;
         projectFile = projectFileBean;
+        rootManager = new InjectRootLayoutManager(jq.sc_id);
         aci = new AppCompatInjection(jq, projectFileBean);
     }
 
@@ -73,21 +80,35 @@ public class Ox {
         return result.toString();
     }
 
+    public void setExcludeAppCompat(boolean exclude) {
+        excludeAppCompat = exclude;
+    }
+
     private void writeRootLayout() {
-        XmlBuilder nx = new XmlBuilder("LinearLayout");
-        nx.addAttribute("android", "layout_width", "match_parent");
-        nx.addAttribute("android", "layout_height", "match_parent");
-        nx.addAttribute("android", "orientation", "vertical");
+        var root = rootManager.getLayoutByName(projectFile.getXmlName());
+        XmlBuilder nx = new XmlBuilder(root.getClassName());
+        var rootAttributes = root.getAttributes();
+        if (!rootAttributes.containsKey("android:layout_width")) {
+            nx.addAttribute("android", "layout_width", "match_parent");
+        }
+        if (!rootAttributes.containsKey("android:layout_height")) {
+            nx.addAttribute("android", "layout_height", "match_parent");
+        }
+        for (Map.Entry<String, String> entry : rootAttributes.entrySet()) {
+            nx.addAttribute(null, entry.getKey(), entry.getValue());
+        }
         for (ViewBean viewBean : views) {
             String parent = viewBean.parent;
             if (parent == null || parent.isEmpty() || parent.equals("root")) {
                 writeWidget(nx, viewBean);
             }
         }
-        if (buildConfig.g) {
+        if (!excludeAppCompat && buildConfig.g) {
             if (projectFile.fileType == ProjectFileBean.PROJECT_FILE_TYPE_ACTIVITY) {
                 if (projectFile.hasActivityOption(ProjectFileBean.OPTION_ACTIVITY_TOOLBAR)) {
-                    nx.addAttribute("app", "layout_behavior", "@string/appbar_scrolling_view_behavior");
+                    if (!root.getAttributes().containsKey("app:layout_behavior")) {
+                        nx.addAttribute("app", "layout_behavior", "@string/appbar_scrolling_view_behavior");
+                    }
                 }
                 if (projectFile.hasActivityOption(ProjectFileBean.OPTION_ACTIVITY_TOOLBAR)
                         || projectFile.hasActivityOption(ProjectFileBean.OPTION_ACTIVITY_FAB)) {
@@ -150,6 +171,16 @@ public class Ox {
         rootLayout.addNamespaceDeclaration(0, "xmlns", "android", "http://schemas.android.com/apk/res/android");
     }
 
+    public static String formatColor(int color) {
+        int alpha = (color >> 24) & 0xff;
+
+        if (alpha != 0xff) {
+            return String.format("#%06X", color);
+        } else {
+            return String.format("#%08X", color);
+        }
+    }
+
     private void writeBackgroundResource(XmlBuilder nx, ViewBean viewBean) {
         var injectHandler = new InjectAttributeHandler(viewBean);
         Set<String> toNotAdd = readAttributesToReplace(viewBean);
@@ -166,25 +197,25 @@ public class Ox {
                         if (!toNotAdd.contains("app:backgroundTint") && !injectHandler.contains("backgroundTint") && (backgroundResColor != null)) {
                             nx.addAttribute("app", "backgroundTint", colorPath);
                         } else if (!toNotAdd.contains("app:backgroundTint") && !injectHandler.contains("backgroundTint")) {
-                            nx.addAttribute("app", "backgroundTint", String.format("#%06X", color));
+                            nx.addAttribute("app", "backgroundTint", formatColor(color));
                         }
-                    } else if (nx.c().equals("CardView")) {
+                    } else if (nx.c().equals("CardView") || nx.c().equals("MaterialCardView")) {
                         if (!toNotAdd.contains("app:cardBackgroundColor") && !injectHandler.contains("cardBackgroundColor") && backgroundResColor != null) {
                             nx.addAttribute("app", "cardBackgroundColor", colorPath);
                         } else if (!toNotAdd.contains("app:cardBackgroundColor") && !injectHandler.contains("cardBackgroundColor")) {
-                            nx.addAttribute("app", "cardBackgroundColor", String.format("#%06X", color));
+                            nx.addAttribute("app", "cardBackgroundColor", formatColor(color));
                         }
                     } else if (nx.c().equals("CollapsingToolbarLayout")) {
                         if (!toNotAdd.contains("app:contentScrim") && !injectHandler.contains("contentScrim") && backgroundResColor != null) {
                             nx.addAttribute("app", "contentScrim", colorPath);
                         } else if (!toNotAdd.contains("app:contentScrim") && !injectHandler.contains("contentScrim")) {
-                            nx.addAttribute("app", "contentScrim", String.format("#%06X", color));
+                            nx.addAttribute("app", "contentScrim", formatColor(color));
                         }
                     } else {
                         if (!hasAttr("background", viewBean) && !toNotAdd.contains("android:background") && !injectHandler.contains("background") && backgroundResColor != null) {
                             nx.addAttribute("android", "background", colorPath);
                         } else if (!hasAttr("background", viewBean) && !toNotAdd.contains("android:background") && !injectHandler.contains("background")) {
-                            nx.addAttribute("android", "background", String.format("#%06X", color));
+                            nx.addAttribute("android", "background", formatColor(color));
                         }
                     }
                 } else if (nx.c().equals("BottomAppBar")) {
@@ -194,6 +225,10 @@ public class Ox {
                 } else if (nx.c().equals("CollapsingToolbarLayout")) {
                     if (!toNotAdd.contains("app:contentScrim") && !injectHandler.contains("contentScrim")) {
                         nx.addAttribute("app", "contentScrim", "?attr/colorPrimary");
+                    }
+                } else if (nx.c().equals("CardView") || nx.c().equals("MaterialCardView")) {
+                    if (!toNotAdd.contains("app:cardBackgroundColor") && !injectHandler.contains("cardBackgroundColor")) {
+                        nx.addAttribute("app", "cardBackgroundColor", "@android:color/transparent");
                     }
                 } else {
                     if (!toNotAdd.contains("android:background") && !injectHandler.contains("background")) {
@@ -345,7 +380,7 @@ public class Ox {
             if (textColor != 0 && !toNotAdd.contains("app:sidebar_text_color") && resTextColor != null) {
                 widgetTag.addAttribute("app", "sidebar_text_color", "@color/" + resTextColor);
             } else if (textColor != 0 && !toNotAdd.contains("app:sidebar_text_color")) {
-                widgetTag.addAttribute("app", "sidebar_text_color", String.format("#%06X", textColor & 0xffffff));
+                widgetTag.addAttribute("app", "sidebar_text_color", formatColor(textColor & 0xffffff));
             }
         }
         k(widgetTag, viewBean);
@@ -696,7 +731,7 @@ public class Ox {
             if (!hasAttr("textColor", viewBean) && !toNotAdd.contains("android:textColor") && !injectHandler.contains("textColor") && viewBean.text.resTextColor != null) {
                 nx.addAttribute("android", "textColor", "@color/" + viewBean.text.resTextColor);
             } else if (!hasAttr("textColor", viewBean) && !toNotAdd.contains("android:textColor") && !injectHandler.contains("textColor")) {
-                nx.addAttribute("android", "textColor", String.format("#%06X", viewBean.text.textColor & 0xffffff));
+                nx.addAttribute("android", "textColor", formatColor(viewBean.text.textColor & 0xffffff));
             }
         }
         switch (viewBean.type) {
@@ -715,7 +750,7 @@ public class Ox {
                     if (!hasAttr("textColorHint", viewBean) && !toNotAdd.contains("android:textColorHint") && (viewBean.text.resHintColor != null)) {
                         nx.addAttribute("android", "textColorHint", "@color/" + viewBean.text.resHintColor);
                     } else if (!hasAttr("textColorHint", viewBean) && !toNotAdd.contains("android:textColorHint")) {
-                        nx.addAttribute("android", "textColorHint", String.format("#%06X", viewBean.text.hintColor & 0xffffff));
+                        nx.addAttribute("android", "textColorHint", formatColor(viewBean.text.hintColor & 0xffffff));
                     }
                 }
                 if (viewBean.text.singleLine != 0 && !toNotAdd.contains("android:singleLine") && !injectHandler.contains("singleLine")) {
