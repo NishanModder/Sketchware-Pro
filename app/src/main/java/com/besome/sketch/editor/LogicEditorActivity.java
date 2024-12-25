@@ -21,7 +21,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.os.Vibrator;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.Pair;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -46,9 +48,10 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.besome.sketch.beans.BlockBean;
 import com.besome.sketch.beans.BlockCollectionBean;
@@ -57,6 +60,7 @@ import com.besome.sketch.beans.HistoryBlockBean;
 import com.besome.sketch.beans.MoreBlockCollectionBean;
 import com.besome.sketch.beans.ProjectFileBean;
 import com.besome.sketch.beans.ViewBean;
+import com.besome.sketch.design.DesignActivity;
 import com.besome.sketch.editor.component.ComponentAddActivity;
 import com.besome.sketch.editor.logic.BlockPane;
 import com.besome.sketch.editor.logic.LogicTopMenu;
@@ -81,6 +85,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import a.a.a.DB;
 import a.a.a.FB;
@@ -110,7 +115,6 @@ import a.a.a.sq;
 import a.a.a.uq;
 import a.a.a.wB;
 import a.a.a.xB;
-import a.a.a.xq;
 import a.a.a.yq;
 import a.a.a.yy;
 import dev.aldi.sayuti.block.ExtraPaletteBlock;
@@ -120,6 +124,7 @@ import io.github.rosemoe.sora.widget.component.Magnifier;
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme;
 import io.github.rosemoe.sora.widget.schemes.SchemeDarcula;
 import mod.bobur.StringEditorActivity;
+import mod.bobur.XmlToSvgConverter;
 import mod.hey.studios.editor.view.IdGenerator;
 import mod.hey.studios.moreblock.ReturnMoreblockManager;
 import mod.hey.studios.moreblock.importer.MoreblockImporterDialog;
@@ -130,6 +135,8 @@ import mod.jbk.editor.manage.MoreblockImporter;
 import mod.jbk.util.BlockUtil;
 import mod.pranav.viewbinding.ViewBindingBuilder;
 import pro.sketchware.R;
+import pro.sketchware.databinding.ImagePickerItemBinding;
+import pro.sketchware.databinding.SearchWithRecyclerViewBinding;
 import pro.sketchware.databinding.PropertyPopupSelectorSingleBinding;
 import pro.sketchware.databinding.ViewStringEditorAddBinding;
 import pro.sketchware.menu.ExtraMenuBean;
@@ -719,25 +726,15 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
         return a2;
     }
 
-    public final LinearLayout a(String str, boolean z) {
+    private ImageView setImageViewContent(String str) {
         Uri fromFile;
         float a2 = wB.a(this, 1.0f);
-        LinearLayout linearLayout = new LinearLayout(this);
-        linearLayout.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) (60.0f * a2)));
-        linearLayout.setGravity(Gravity.CENTER | Gravity.LEFT);
-        linearLayout.setOrientation(LinearLayout.HORIZONTAL);
-        TextView textView = new TextView(this);
-        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT);
-        layoutParams.weight = 1.0f;
-        textView.setLayoutParams(layoutParams);
-        textView.setText(str);
-        linearLayout.addView(textView);
         ImageView imageView = new ImageView(this);
         imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
         int i = (int) (a2 * 48.0f);
         imageView.setLayoutParams(new LinearLayout.LayoutParams(i, i));
         if (!"NONE".equals(str)) {
-            if (z) {
+            if (str.equals("default_image")) {
                 imageView.setImageResource(getResources().getIdentifier(str, "drawable", getContext().getPackageName()));
             } else {
                 File file = new File(jC.d(B).f(str));
@@ -752,13 +749,16 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
                         Glide.with(getContext()).load(fromFile).signature(kC.n()).error(R.drawable.ic_remove_grey600_24dp).into(imageView);
                     }
                 } else {
-                    imageView.setImageResource(getContext().getResources().getIdentifier(str, "drawable", getContext().getPackageName()));
+                    try {
+                        XmlToSvgConverter.setImageVectorFromFile(imageView, XmlToSvgConverter.getVectorFullPath(DesignActivity.sc_id, str));
+                    } catch (Exception e) {
+                        imageView.setImageResource(R.drawable.ic_remove_grey600_24dp);
+                    }
                 }
             }
         }
         imageView.setBackgroundResource(R.drawable.bg_outline);
-        linearLayout.addView(imageView);
-        return linearLayout;
+        return imageView;
     }
 
     public final ArrayList<BlockBean> a(ArrayList<BlockBean> arrayList, int i, int i2, boolean z) {
@@ -901,6 +901,10 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
     public void pickImage(Ss ss, String str) {
         boolean selectingBackgroundImage = "property_background_resource".equals(str);
         boolean selectingImage = !selectingBackgroundImage && "property_image".equals(str);
+        AtomicReference<String> selectedImage = new AtomicReference<>("");
+
+        SearchWithRecyclerViewBinding binding = SearchWithRecyclerViewBinding.inflate(getLayoutInflater());
+
         aB dialog = new aB(this);
         if (selectingImage) {
             dialog.b(getTranslatedString(R.string.logic_editor_title_select_image));
@@ -909,56 +913,43 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
         }
 
         dialog.a(R.drawable.ic_picture_48dp);
-        View customView = wB.a(this, R.layout.property_popup_selector_color);
-        RadioGroup radioGroup = customView.findViewById(R.id.rg);
-        LinearLayout content = customView.findViewById(R.id.content);
+
+        binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
         ArrayList<String> images = jC.d(B).m();
+        images.addAll(XmlToSvgConverter.getVectorDrawables(DesignActivity.sc_id));
         if (selectingImage) {
             images.add(0, "default_image");
         } else if (selectingBackgroundImage) {
             images.add(0, "NONE");
         }
 
+        ImagePickerAdapter adapter = new ImagePickerAdapter(images, (String) ss.getArgValue(), selectedImage::set);
+        binding.recyclerView.setAdapter(adapter);
 
-        for (String image : images) {
-            RadioButton radioButton = new RadioButton(this);
-            radioButton.setText("");
-            radioButton.setTag(image);
-            radioButton.setGravity(Gravity.CENTER | Gravity.LEFT);
-            radioButton.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    (int) (wB.a(this, 1f) * 60)));
 
-            radioGroup.addView(radioButton);
-            if (image.equals(ss.getArgValue())) {
-                radioButton.setChecked(true);
+        binding.searchInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String query = s.toString().toLowerCase();
+                adapter.filter(query);
             }
-
-            if (!xq.a(B)) {
-                xq.b(B);
-            }
-            LinearLayout imageLinear = a(image, !(!image.equals("default_image") && !"NONE".equals(image)));
-            imageLinear.setOnClickListener(v -> {
-                RadioButton button = (RadioButton) radioGroup.getChildAt(content.indexOfChild(v));
-                button.setChecked(true);
-            });
-            content.addView(imageLinear);
-        }
-
-        dialog.a(customView);
-        dialog.b(getTranslatedString(R.string.common_word_save), v -> {
-            for (int i = 0; i < radioGroup.getChildCount(); i++) {
-                View child = radioGroup.getChildAt(i);
-                if (child instanceof RadioButton) {
-                    RadioButton radioButton = (RadioButton) child;
-                    if (radioButton.isChecked()) {
-                        a(ss, radioButton.getTag());
-                        break;
-                    }
-                }
-            }
-            dialog.dismiss();
         });
+
+        dialog.b(getTranslatedString(R.string.common_word_save), view -> {
+            String selectedImg = selectedImage.get();
+            if (!selectedImg.isEmpty()) {
+                a(ss, selectedImage.get());
+            }
+        });
+
+        dialog.a(binding.getRoot());
         dialog.a(getTranslatedString(R.string.common_word_cancel), Helper.getDialogDismissListener(dialog));
         dialog.show();
     }
@@ -1007,6 +998,91 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
         });
         aBVar.a(getTranslatedString(R.string.common_word_cancel), Helper.getDialogDismissListener(aBVar));
         aBVar.show();
+    }
+
+    public class ImagePickerAdapter extends RecyclerView.Adapter<ImagePickerAdapter.ViewHolder> {
+
+        private final ArrayList<String> images;
+        private String selectedImage;
+        private final OnImageSelectedListener listener;
+        private final ArrayList<String> filteredImages;
+        private final Map<String, View> imageCache = new HashMap<>();
+
+        public interface OnImageSelectedListener {
+            void onImageSelected(String image);
+        }
+
+        public ImagePickerAdapter(ArrayList<String> images, String selectedImage, OnImageSelectedListener listener) {
+            this.images = images;
+            this.selectedImage = selectedImage;
+            this.listener = listener;
+            this.filteredImages = new ArrayList<>(images);
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            ImagePickerItemBinding binding = ImagePickerItemBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
+            return new ViewHolder(binding);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            String image = filteredImages.get(position);
+
+            holder.binding.textView.setText(image);
+
+            View imageView = imageCache.get(image);
+            if (imageView == null) {
+                imageView = setImageViewContent(image);
+                imageCache.put(image, imageView);
+            }
+
+            if (imageView.getParent() != null) {
+                ((ViewGroup) imageView.getParent()).removeView(imageView);
+            }
+
+            holder.binding.layoutImg.removeAllViews();
+            holder.binding.layoutImg.addView(imageView);
+
+            holder.binding.radioButton.setChecked(image.equals(selectedImage));
+
+            holder.binding.transparentOverlay.setOnClickListener(v -> {
+                if (!image.equals(selectedImage)) {
+                    selectedImage = image;
+                    listener.onImageSelected(image);
+                    notifyDataSetChanged();
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return filteredImages.size();
+        }
+
+        public void filter(String query) {
+            filteredImages.clear();
+            if (query.isEmpty()) {
+                filteredImages.addAll(images);
+            } else {
+                for (String image : images) {
+                    if (image.toLowerCase().contains(query)) {
+                        filteredImages.add(image);
+                    }
+                }
+            }
+            notifyDataSetChanged();
+        }
+
+        public static class ViewHolder extends RecyclerView.ViewHolder {
+            public final ImagePickerItemBinding binding;
+
+            public ViewHolder(@NonNull ImagePickerItemBinding binding) {
+                super(binding.getRoot());
+                this.binding = binding;
+            }
+        }
     }
 
     public void a(BlockBean blockBean, boolean z) {
@@ -2098,7 +2174,7 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
                 }
             }
             int id = v.getId();
-            if (id == R.id.btn_accept) {
+            if (id == R.id.btn_delete) {
                 setResult(Activity.RESULT_OK, new Intent());
                 finish();
             } else if (id == R.id.btn_cancel) {
@@ -2138,9 +2214,6 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
         T = (int) wB.a(getBaseContext(), (float) T);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        findViewById(R.id.layout_main_logo).setVisibility(View.GONE);
-        getSupportActionBar().setDisplayShowTitleEnabled(true);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         toolbar.setNavigationOnClickListener(v -> {
             if (!mB.a()) {
                 onBackPressed();
@@ -2149,18 +2222,9 @@ public class LogicEditorActivity extends BaseAppCompatActivity implements View.O
         G = new DB(getContext(), "P12").a("P12I0", true);
         A = ViewConfiguration.get(getContext()).getScaledTouchSlop();
         F = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        String stringExtra = getIntent().getStringExtra("event_text");
-        ActionBar d;
-        if (C.equals("onCreate")) {
-            d = getSupportActionBar();
-        } else if (C.equals("_fab")) {
-            d = getSupportActionBar();
-            stringExtra = "fab : " + stringExtra;
-        } else {
-            d = getSupportActionBar();
-            stringExtra = ReturnMoreblockManager.getMbName(C) + " : " + stringExtra;
-        }
-        d.setTitle(stringExtra);
+        String eventText = getIntent().getStringExtra("event_text");
+        toolbar.setTitle(C.equals("_fab") ? "fab" : ReturnMoreblockManager.getMbName(C));
+        toolbar.setSubtitle(eventText);
         paletteSelector = findViewById(R.id.palette_selector);
         paletteSelector.setOnBlockCategorySelectListener(this);
         m = findViewById(R.id.palette_block);
