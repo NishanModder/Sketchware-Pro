@@ -8,7 +8,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Typeface;
@@ -24,10 +23,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -39,6 +36,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.view.GravityCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -95,7 +93,6 @@ import a.a.a.lC;
 import a.a.a.mB;
 import a.a.a.rs;
 import a.a.a.wq;
-import a.a.a.xB;
 import a.a.a.yB;
 import a.a.a.yq;
 import a.a.a.zy;
@@ -109,7 +106,6 @@ import mod.agus.jcoderz.editor.manage.permission.ManagePermissionActivity;
 import mod.agus.jcoderz.editor.manage.resource.ManageResourceActivity;
 import mod.hey.studios.activity.managers.assets.ManageAssetsActivity;
 import mod.hey.studios.activity.managers.java.ManageJavaActivity;
-import mod.hey.studios.build.BuildSettings;
 import mod.hey.studios.build.BuildSettingsDialog;
 import mod.hey.studios.compiler.kotlin.KotlinCompilerBridge;
 import mod.hey.studios.project.custom_blocks.CustomBlocksDialog;
@@ -129,7 +125,6 @@ import mod.jbk.diagnostic.CompileErrorSaver;
 import mod.jbk.diagnostic.MissingFileException;
 import mod.jbk.util.LogUtil;
 import mod.khaled.logcat.LogReaderActivity;
-import pro.sketchware.utility.ThemeUtils;
 import pro.sketchware.R;
 import pro.sketchware.activities.appcompat.ManageAppCompatActivity;
 import pro.sketchware.activities.editor.command.ManageXMLCommandActivity;
@@ -137,7 +132,9 @@ import pro.sketchware.activities.editor.view.ViewCodeEditorActivity;
 import pro.sketchware.databinding.ProgressMsgBoxBinding;
 import pro.sketchware.utility.FileUtil;
 import pro.sketchware.utility.SketchwareUtil;
+import pro.sketchware.utility.ThemeUtils;
 import pro.sketchware.utility.apk.ApkSignatures;
+import pro.sketchware.activities.editor.view.CodeViewerActivity;
 
 public class DesignActivity extends BaseAppCompatActivity implements View.OnClickListener {
     public static String sc_id;
@@ -462,6 +459,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
         fileName = findViewById(R.id.file_name);
         findViewById(R.id.file_name_container).setOnClickListener(this);
         BottomAppBar bottomAppBar = findViewById(R.id.bottom_app_bar);
+        bottomAppBar.setOverflowIcon(ContextCompat.getDrawable(this,  R.drawable.sorting_options));
         bottomMenu = bottomAppBar.getMenu();
         bottomMenu.add(Menu.NONE, 1, Menu.NONE, "Build Settings");
         bottomMenu.add(Menu.NONE, 2, Menu.NONE, "Clean temporary files").setVisible(false);
@@ -801,59 +799,36 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     }
 
     private void showCurrentActivitySrcCode() {
-        if (projectFile == null) return;
-        ProgressMsgBoxBinding loadingDialogBinding = ProgressMsgBoxBinding.inflate(getLayoutInflater());
+        if (projectFile == null) return; 
+        var loadingDialogBinding = ProgressMsgBoxBinding.inflate(getLayoutInflater());
         loadingDialogBinding.tvProgress.setText("Generating source code...");
         var loadingDialog = new MaterialAlertDialogBuilder(this)
-                .setTitle("Please wait")
-                .setCancelable(false)
-                .setView(loadingDialogBinding.getRoot())
-                .create();
+            .setTitle("Please wait")
+            .setCancelable(false)
+            .setView(loadingDialogBinding.getRoot())
+            .create();
         loadingDialog.show();
-
+        
         new Thread(() -> {
-            String filename = viewPager.getCurrentItem() == 0 ? projectFile.getXmlName() : projectFile.getJavaName();
-            final String source = new yq(getApplicationContext(), sc_id).getFileSrc(filename, jC.b(sc_id), jC.a(sc_id), jC.c(sc_id));
-
-            var dialogBuilder = new MaterialAlertDialogBuilder(this)
-                    .setTitle(filename)
-                    .setCancelable(false)
-                    .setPositiveButton("Dismiss", null);
-
+            var filename = fileName.getText().toString();
+            final String source = new yq(getApplicationContext(), sc_id)
+                .getFileSrc(filename, jC.b(sc_id), jC.a(sc_id), jC.c(sc_id));
             runOnUiThread(() -> {
                 if (isFinishing()) return;
                 loadingDialog.dismiss();
-
-                CodeEditor editor = new CodeEditor(this);
-                editor.setTypefaceText(Typeface.MONOSPACE);
-                editor.setEditable(false);
-                editor.setTextSize(14);
-                editor.setText(!source.isEmpty() ? source : "Failed to generate source.");
-                editor.getComponent(Magnifier.class).setWithinEditorForcibly(true);
-
-                if (filename.endsWith(".xml")) {
-                    editor.setEditorLanguage(CodeEditorLanguages.loadTextMateLanguage(CodeEditorLanguages.SCOPE_NAME_XML));
-                    if (ThemeUtils.isDarkThemeEnabled(getApplicationContext())) {
-                        editor.setColorScheme(CodeEditorColorSchemes.loadTextMateColorScheme(CodeEditorColorSchemes.THEME_DRACULA));
-                    } else {
-                        editor.setColorScheme(CodeEditorColorSchemes.loadTextMateColorScheme(CodeEditorColorSchemes.THEME_GITHUB));
-                    }
-                } else {
-                    editor.setEditorLanguage(new JavaLanguage());
-                    if (ThemeUtils.isDarkThemeEnabled(getApplicationContext())) {
-                        editor.setColorScheme(new SchemeDarcula());
-                    } else {
-                        editor.setColorScheme(new EditorColorScheme());
-                    }
+                if (source.isEmpty()) {
+                    Toast.makeText(this, "Failed to generate source.", Toast.LENGTH_SHORT).show();
+                    return;
                 }
-
-                AlertDialog dialog = dialogBuilder.create();
-                dialog.setView(editor,
-                        (int) getDip(24),
-                        (int) getDip(20),
-                        (int) getDip(24),
-                        (int) getDip(0));
-                dialog.show();
+                var intent = new Intent(this, CodeViewerActivity.class);
+                intent.putExtra("code", source);
+                intent.putExtra("sc_id", sc_id);
+                if (filename.endsWith(".xml")) {
+                    intent.putExtra("scheme", CodeViewerActivity.SCHEME_XML);
+                } else {
+                    intent.putExtra("scheme", CodeViewerActivity.SCHEME_JAVA);
+                }
+                startActivity(intent);
             });
         }).start();
     }
@@ -887,13 +862,13 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     }
 
     /**
-     * Opens {@link ViewCodeEditor}.
+     * Opens {@link ViewCodeEditorActivity}.
      */
     void toViewCodeEditor() {
         if (projectFile == null) return;
         k();
         new Thread(() -> {
-            String filename = projectFile.getXmlName();
+            final String filename = fileName.getText().toString();
             // var yq = new yq(getApplicationContext(), sc_id);
             var xmlGenerator = new Ox(q.N, projectFile);
             var projectDataManager = jC.a(sc_id);
@@ -905,7 +880,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
             runOnUiThread(() -> {
                 if (isFinishing()) return;
                 h();
-                launchActivity(ViewCodeEditorActivity.class, openViewCodeEditor, new Pair<>("title", projectFile.getXmlName()), new Pair<>("content", content));
+                launchActivity(ViewCodeEditorActivity.class, openViewCodeEditor, new Pair<>("title", filename), new Pair<>("content", content));
             });
         }).start();
     }
@@ -933,11 +908,11 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
     void toAndroidManifestManager() {
         if (projectFile == null) return;
         launchActivity(AndroidManifestInjection.class, null,
-                new Pair<>("file_name", projectFile.getJavaName()));
+                new Pair<>("file_name", currentJavaFileName));
     }
 
     /**
-     * Opens {@link ManageCustomAttributeActivity}.
+     * Opens {@link ManageAppCompatActivity}.
      */
     void toAppCompatInjectionManager() {
         if (projectFile == null) return;
@@ -1038,19 +1013,7 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
      * Opens {@link SrcViewerActivity}.
      */
     void toSourceCodeViewer() {
-        String current = "";
-        if (viewPager.getCurrentItem() == 0) {
-            try {
-                current = viewTabAdapter.d().getXmlName();
-            } catch (Exception ignored) {
-            }
-        } else if (viewPager.getCurrentItem() == 1) {
-            try {
-                current = eventTabAdapter.getCurrentActivity().getJavaName();
-            } catch (Exception ignored) {
-            }
-        }
-        launchActivity(SrcViewerActivity.class, null, new Pair<>("current", current));
+        launchActivity(SrcViewerActivity.class, null, new Pair<>("current", fileName.getText().toString()));
     }
 
     /**
@@ -1301,7 +1264,12 @@ public class DesignActivity extends BaseAppCompatActivity implements View.OnClic
                     updateNotification(progress + " (" + step + " / " + totalSteps + ")");
                 }
                 progressText.setText(progress);
-                progressBar.setProgress((step * 100) / totalSteps, true);
+                var progressInt = (step * 100) / totalSteps;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                   progressBar.setProgress(progressInt, true);
+                } else {
+                   progressBar.setProgress(progressInt);
+                }
                 Log.d("DesignActivity$BuildTask", step + " / " + totalSteps);
             });
         }
