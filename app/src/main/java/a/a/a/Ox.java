@@ -85,7 +85,7 @@ public class Ox {
     }
 
     private void writeRootLayout() {
-        var root = rootManager.getLayoutByName(projectFile.getXmlName());
+        var root = rootManager.getLayoutByFileName(projectFile.getXmlName());
         XmlBuilder nx = new XmlBuilder(root.getClassName());
         var rootAttributes = root.getAttributes();
         if (!rootAttributes.containsKey("android:layout_width")) {
@@ -422,6 +422,19 @@ public class Ox {
                     collapsingToolbarLayout = widgetTag;
                     return;
                 }
+            }
+        }
+        // Adding tools:listitem allows the direct XML editor to recognize the customView
+        // for ListView, GridView, Spinner, or RecyclerView.
+        if ((viewBean.getClassInfo().b("ListView")
+                || viewBean.getClassInfo().b("GridView")
+                || viewBean.getClassInfo().b("Spinner")
+                || viewBean.getClassInfo().b("RecyclerView")
+                || viewBean.getClassInfo().b("ViewPager"))
+                && !injectHandler.contains("listitem")) {
+            var customView = viewBean.customView;
+            if (customView != null && !customView.isEmpty() && !customView.equals("none")) {
+                widgetTag.addAttribute("tools", "listitem", "@layout/" + customView);
             }
         }
         nx.a(widgetTag);
